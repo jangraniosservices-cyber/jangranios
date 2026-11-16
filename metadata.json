@@ -1,0 +1,8 @@
+{
+  "name": "Jangra NIOS Services",
+  "description": "Official educational admission, coaching, document verification, and student subscription portal for Jangra NIOS Services (Class 10th Secondary & Class 12th Senior Secondary).",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

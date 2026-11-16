@@ -1,0 +1,93 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        (request.auth.token.email == 'nk95600@gmail.com' && request.auth.token.email_verified == true)
+      );
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function isValidSiteSettings(data) {
+      return data.keys().hasAll(['businessName', 'heroHeading', 'heroSubheading']) &&
+        data.keys().hasOnly(['businessName', 'heroHeading', 'heroSubheading', 'heroImageUrl', 'aboutIntro', 'phone', 'email', 'address', 'workingHours']) &&
+        data.businessName is string && data.businessName.size() <= 120 &&
+        data.heroHeading is string && data.heroHeading.size() <= 160 &&
+        data.heroSubheading is string && data.heroSubheading.size() <= 240;
+    }
+
+    function isValidCourse(data) {
+      return data.keys().hasAll(['title', 'category', 'description', 'fee', 'active']) &&
+        data.keys().hasOnly(['title', 'category', 'description', 'fee', 'duration', 'active']) &&
+        data.title is string && data.title.size() <= 150 &&
+        data.category is string && data.category.size() <= 80 &&
+        data.description is string && data.description.size() <= 1500 &&
+        data.fee is number && data.fee >= 0 &&
+        data.active is bool;
+    }
+
+    function isValidAnnouncement(data) {
+      return data.keys().hasAll(['title', 'summary', 'publishedAt']) &&
+        data.keys().hasOnly(['title', 'summary', 'category', 'publishedAt']) &&
+        data.title is string && data.title.size() <= 200 &&
+        data.summary is string && data.summary.size() <= 1000 &&
+        data.publishedAt is string && data.publishedAt.size() <= 40;
+    }
+
+    function isValidGalleryItem(data) {
+      return data.keys().hasAll(['title', 'imageUrl']) &&
+        data.keys().hasOnly(['title', 'imageUrl', 'caption']) &&
+        data.title is string && data.title.size() <= 160 &&
+        data.imageUrl is string && data.imageUrl.size() <= 500;
+    }
+
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    match /_healthcheck/{docId} {
+      allow read: if isValidId(docId);
+    }
+
+    match /site_settings/{settingId} {
+      allow get: if isValidId(settingId);
+      allow create, update: if isValidId(settingId) && isAdmin() && isValidSiteSettings(incoming());
+      allow delete: if isValidId(settingId) && isAdmin();
+    }
+
+    match /courses/{courseId} {
+      allow get, list: if true;
+      allow create, update: if isValidId(courseId) && isAdmin() && isValidCourse(incoming());
+      allow delete: if isValidId(courseId) && isAdmin();
+    }
+
+    match /announcements/{announcementId} {
+      allow get, list: if true;
+      allow create, update: if isValidId(announcementId) && isAdmin() && isValidAnnouncement(incoming());
+      allow delete: if isValidId(announcementId) && isAdmin();
+    }
+
+    match /gallery/{galleryId} {
+      allow get, list: if true;
+      allow create, update: if isValidId(galleryId) && isAdmin() && isValidGalleryItem(incoming());
+      allow delete: if isValidId(galleryId) && isAdmin();
+    }
+
+    match /admins/{adminId} {
+      allow get: if isValidId(adminId) && isSignedIn() && request.auth.uid == adminId;
+    }
+  }
+}
